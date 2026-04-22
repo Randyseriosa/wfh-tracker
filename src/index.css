@@ -1,0 +1,120 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@plugin "daisyui" {
+  themes: nord, dark, light;
+}
+
+@theme {
+  --font-sans: "Outfit", system-ui, -apple-system, sans-serif;
+  --font-display: "Outfit", system-ui, -apple-system, sans-serif;
+
+  --color-nord-0: #2e3440;
+  --color-nord-1: #3b4252;
+  --color-nord-2: #434c5e;
+  --color-nord-3: #4c566a;
+  --color-nord-4: #d8dee9;
+  --color-nord-5: #e5e9f0;
+  --color-nord-6: #eceff4;
+  --color-nord-7: #8fbcbb;
+  --color-nord-8: #88c0d0;
+  --color-nord-9: #81a1c1;
+  --color-nord-10: #5e81ac;
+  --color-nord-11: #bf616a;
+  --color-nord-12: #d08770;
+  --color-nord-13: #ebcb8b;
+  --color-nord-14: #a3be8c;
+  --color-nord-15: #b48ead;
+
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+}
+
+:root {
+  --sans: "Outfit", sans-serif;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Custom Design Utilities */
+.glass-panel {
+  @apply bg-base-100/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+}
+
+.surface-elevated {
+  @apply bg-base-100 border border-base-300 shadow-xl rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:border-primary/20;
+}
+
+.surface-elevated-sm {
+  @apply bg-base-200 border border-base-300 shadow-lg rounded-xl overflow-hidden;
+}
+
+.gradient-text {
+  @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+}
+
+.sidebar-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-primary/10 hover:text-primary font-medium cursor-pointer;
+}
+
+.sidebar-item-active {
+  @apply bg-primary text-white shadow-lg shadow-primary/20;
+}
+
+.btn-primary-custom {
+  @apply btn btn-primary rounded-xl border-none text-white hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20;
+}
+
+.gradient-shell {
+  @apply bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10 p-[1px] rounded-[33px] shadow-2xl;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-base-300 rounded-full hover:bg-base-content/20 transition-colors;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
