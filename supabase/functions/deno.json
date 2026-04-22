@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "lib": [
+            "deno.window",
+            "deno.ns",
+            "deno.unstable",
+            "dom",
+            "esnext"
+        ],
+        "strict": true
+    },
+    "imports": {
+        "std/": "https://deno.land/std@0.168.0/",
+        "std/http/server.ts": "https://deno.land/std@0.168.0/http/server.ts",
+        "@supabase/supabase-js": "npm:@supabase/supabase-js@2.42.0"
+    }
+}

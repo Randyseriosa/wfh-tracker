@@ -1,0 +1,10 @@
+{
+    "deno.enable": true,
+    "deno.config": "./deno.json",
+    "deno.importMap": "./deno.json",
+    "deno.lint": true,
+    "deno.unstable": true,
+    "typescript.validate.enable": false,
+    "javascript.validate.enable": false,
+    "editor.defaultFormatter": "denoland.vscode-deno"
+}
