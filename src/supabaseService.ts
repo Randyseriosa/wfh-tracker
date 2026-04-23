@@ -1,8 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserRole, Profile, Code } from './types/wfh';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Use placeholders if variables are missing to prevent build-time crashes
+// The actual values will be injected by Vite from environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder';
+
+if (typeof window !== 'undefined' && (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY)) {
+    console.error('Supabase environment variables are missing. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
