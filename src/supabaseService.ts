@@ -33,11 +33,18 @@ export const profileService = {
     async getSupervisors() {
         const { data, error } = await supabase
             .from('profile')
-            .select('id, name, dept_id')
+            .select('id, name, dept_id, department:dept_id(name), members:members(count)')
             .eq('role', 'supervisor');
 
         if (error) throw error;
-        return data;
+
+        // PostgREST returns members: [{ count: X }] for many-to-one relations usually
+        // or members: { count: X } depending on config. 
+        // We'll normalize it in the hook or service.
+        return data.map(s => ({
+            ...s,
+            memberCount: s.members?.[0]?.count ?? 0
+        }));
     }
 };
 

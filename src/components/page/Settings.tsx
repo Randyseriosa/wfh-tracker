@@ -1,7 +1,20 @@
 import React from 'react';
 import DashboardLayout from '../layout/DashboardLayout';
+import { useLoading } from '../../context/LoadingContext';
+import { useModal } from '../../context/ModalContext';
 
 const Settings: React.FC = () => {
+    const { showLoading, hideLoading } = useLoading();
+    const { showAlert } = useModal();
+
+    const handleApplyChanges = async () => {
+        showLoading();
+        // Simulate an API call
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        hideLoading();
+        showAlert('Changes applied successfully', 'Update');
+    };
+
     return (
         <DashboardLayout title="System Configurations">
             <div className="max-w-4xl">
@@ -59,7 +72,12 @@ const Settings: React.FC = () => {
                     </div>
 
                     <div className="pt-10 border-t border-base-300 flex justify-end">
-                        <button className="btn btn-primary rounded-xl px-12 h-14 shadow-lg shadow-primary/20 text-sm font-bold tracking-widest uppercase">Apply Changes</button>
+                        <button
+                            onClick={handleApplyChanges}
+                            className="btn btn-primary rounded-xl px-12 h-14 shadow-lg shadow-primary/20 text-sm font-bold tracking-widest uppercase"
+                        >
+                            Apply Changes
+                        </button>
                     </div>
                 </div>
             </div>
@@ -68,4 +86,5 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
+
 

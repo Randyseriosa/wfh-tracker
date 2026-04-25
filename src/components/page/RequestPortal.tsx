@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useDepartments, useRequestPortal } from '../../hooks/useWFH';
 import { profileService } from '../../supabaseService';
+import { useLoading } from '../../context/LoadingContext';
 
 const RequestPortal = () => {
     const { departments, loading: deptsLoading } = useDepartments();
     const { member, loading: portalLoading, error, verify, submitRequest, reset } = useRequestPortal();
+    const { showLoading, hideLoading } = useLoading();
 
     const [selectedDept, setSelectedDept] = useState('');
     const [selectedSupervisor, setSelectedSupervisor] = useState('');
@@ -32,13 +34,17 @@ const RequestPortal = () => {
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDept || !selectedSupervisor || !idNum) return;
+        showLoading();
         await verify(selectedDept, selectedSupervisor, idNum);
+        hideLoading();
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!member || !selectedDate) return;
+        showLoading();
         const success = await submitRequest(member.id, selectedDate);
+        hideLoading();
         if (success) {
             setSuccessMsg('WFH Request submitted successfully! Your supervisor will review it shortly.');
             setSelectedDate('');
@@ -66,40 +72,37 @@ const RequestPortal = () => {
                             <form onSubmit={handleVerify} className="space-y-6">
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text text-secondary-content uppercase tracking-widest text-[10px] font-bold">Department</span>
+                                        <span className="label-text text-secondary-content uppercase tracking-widest text-[10px] font-bold">Supervisor</span>
                                     </label>
                                     <select
-                                        className="select select-bordered w-full bg-base-200 border-base-300 rounded-xl focus:border-primary transition-all"
-                                        value={selectedDept}
+                                        className="select select-bordered w-full bg-base-200 border-base-300 rounded-xl focus:border-primary transition-all font-bold"
+                                        value={selectedSupervisor}
                                         onChange={(e) => {
-                                            setSelectedDept(e.target.value);
-                                            setSelectedSupervisor('');
+                                            const supervisorId = e.target.value;
+                                            setSelectedSupervisor(supervisorId);
+                                            const supervisor = supervisors.find(s => s.id === supervisorId);
+                                            if (supervisor?.dept_id) {
+                                                setSelectedDept(supervisor.dept_id);
+                                            }
                                         }}
                                         required
                                     >
-                                        <option value="" disabled>Select Department</option>
-                                        {departments.map(dept => (
-                                            <option key={dept.id} value={dept.id}>{dept.name}</option>
+                                        <option value="" disabled>Select Your Supervisor</option>
+                                        {supervisors.map(sup => (
+                                            <option key={sup.id} value={sup.id}>{sup.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text text-secondary-content uppercase tracking-widest text-[10px] font-bold">Supervisor</span>
+                                        <span className="label-text text-secondary-content uppercase tracking-widest text-[10px] font-bold">Department</span>
                                     </label>
-                                    <select
-                                        className="select select-bordered w-full bg-base-200 border-base-300 rounded-xl focus:border-primary transition-all"
-                                        value={selectedSupervisor}
-                                        onChange={(e) => setSelectedSupervisor(e.target.value)}
-                                        disabled={!selectedDept}
-                                        required
-                                    >
-                                        <option value="" disabled>Select Supervisor</option>
-                                        {filteredSupervisors.map(sup => (
-                                            <option key={sup.id} value={sup.id}>{sup.name}</option>
-                                        ))}
-                                    </select>
+                                    <div className="flex items-center w-full bg-base-200/50 rounded-xl h-12 px-4 border border-base-300/30">
+                                        <span className="text-sm font-bold text-primary italic">
+                                            {departments.find(d => d.id === selectedDept)?.name || (selectedSupervisor ? 'Department not found' : 'Select supervisor first')}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="form-control">
@@ -136,7 +139,7 @@ const RequestPortal = () => {
                                     className={`btn-primary-custom w-full h-14 text-sm uppercase tracking-widest font-bold shadow-lg shadow-primary/20 transition-all ${portalLoading ? 'opacity-50' : ''}`}
                                     disabled={portalLoading}
                                 >
-                                    {portalLoading ? <span className="loading loading-spinner"></span> : 'Verify Identity'}
+                                    Verify Identity
                                 </button>
                             </form>
                         ) : (
@@ -174,7 +177,7 @@ const RequestPortal = () => {
                                         className={`btn-primary-custom w-full h-14 text-sm uppercase tracking-widest font-bold shadow-lg shadow-primary/20 transition-all ${portalLoading ? 'opacity-50' : ''}`}
                                         disabled={portalLoading}
                                     >
-                                        {portalLoading ? <span className="loading loading-spinner"></span> : 'Submit WFH Request'}
+                                        Submit WFH Request
                                     </button>
 
                                     <button

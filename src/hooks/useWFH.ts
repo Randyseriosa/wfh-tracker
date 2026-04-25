@@ -212,3 +212,28 @@ export function useRequestPortal() {
 
     return { member, loading, error, verify, submitRequest, reset: () => setMember(null) };
 }
+
+export function useSupervisors() {
+    const [supervisors, setSupervisors] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchSupervisors = async () => {
+        try {
+            setLoading(true);
+            const { profileService } = await import('../supabaseService');
+            const data = await profileService.getSupervisors();
+            setSupervisors(data);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSupervisors();
+    }, []);
+
+    return { supervisors, loading, error, refresh: fetchSupervisors };
+}

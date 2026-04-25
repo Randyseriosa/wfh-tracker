@@ -1,22 +1,28 @@
 import React, { useState } from 'react';
 import { useMemberPortal } from '../../hooks/useWFH';
+import { useLoading } from '../../context/LoadingContext';
 
 const MemberPortal = () => {
     const [name, setName] = useState('');
     const [idNum, setIdNum] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
     const { member, loading, error, verify, submitRequest } = useMemberPortal();
+    const { showLoading, hideLoading } = useLoading();
     const [successMsg, setSuccessMsg] = useState('');
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
+        showLoading();
         await verify(name, idNum);
+        hideLoading();
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDate) return;
+        showLoading();
         const success = await submitRequest(selectedDate);
+        hideLoading();
         if (success) {
             setSuccessMsg('WFH Request submitted successfully!');
             setSelectedDate('');
