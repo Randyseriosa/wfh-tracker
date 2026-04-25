@@ -45,10 +45,20 @@ Deno.serve(async (req: Request) => {
         console.log('Received registration request:', { ...body, password: '***' })
         const { name, username, password, role, code, dept_id, supervisor_id, id_num } = body
 
-        if (!name || !username || !password || !role || !code) {
+        if (!name || !role || !code) {
             return new Response(JSON.stringify({
                 error: 'Missing required fields',
-                received: { name: !!name, username: !!username, password: !!password, role: !!role, code: !!code }
+                received: { name: !!name, role: !!role, code: !!code }
+            }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        // Username and password required for non-member roles
+        if (role !== 'member' && (!username || !password)) {
+            return new Response(JSON.stringify({
+                error: 'Username and password are required for this role'
             }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -100,77 +110,82 @@ Deno.serve(async (req: Request) => {
             })
         }
 
-        // 2. Check if username already exists in profile
-        console.log('Checking username:', username)
-        const { data: existingProfile, error: profileCheckError } = await supabase
-            .from('profile')
-            .select('username')
-            .eq('username', username)
-            .maybeSingle()
+        // 2. Check if username already exists in profile (only for non-members)
+        if (role !== 'member') {
+            console.log('Checking username:', username)
+            const { data: existingProfile, error: profileCheckError } = await supabase
+                .from('profile')
+                .select('username')
+                .eq('username', username)
+                .maybeSingle()
 
-        if (profileCheckError) {
-            console.error('Error checking profile:', profileCheckError)
-            return new Response(JSON.stringify({ error: `Database error checking username: ${profileCheckError.message}` }), {
-                status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+            if (profileCheckError) {
+                console.error('Error checking profile:', profileCheckError)
+                return new Response(JSON.stringify({ error: `Database error checking username: ${profileCheckError.message}` }), {
+                    status: 500,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                })
+            }
+
+            if (existingProfile) {
+                return new Response(JSON.stringify({ error: 'Username already taken' }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                })
+            }
         }
 
-        if (existingProfile) {
-            return new Response(JSON.stringify({ error: 'Username already taken' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        // 3. Create User and Profile (ONLY for non-members)
+        let userId: string | null = null;
+        if (role !== 'member') {
+            const email = `${username!.trim()}@wfh.tracker`.toLowerCase()
+            console.log('Creating user with email:', email)
+
+            const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+                email,
+                password: password!,
+                email_confirm: true,
+                user_metadata: { name, role }
             })
-        }
 
-        // 3. Create User in auth.users
-        const email = `${username.trim()}@wfh.tracker`.toLowerCase()
-        console.log('Creating user with email:', email)
+            if (userError) {
+                console.error('Error creating user:', userError)
+                return new Response(JSON.stringify({ error: userError.message }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                })
+            }
 
-        const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: { name, role }
-        })
+            userId = userData.user.id;
 
-        if (userError) {
-            console.error('Error creating user:', userError)
-            return new Response(JSON.stringify({ error: userError.message }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
-        }
+            // 4. Create Profile
+            console.log('Creating profile for user:', userId)
+            const profileInsert: any = {
+                id: userId,
+                name,
+                username: username!.trim(),
+                role
+            }
+            if (dept_id) profileInsert.dept_id = dept_id
 
-        const userId = userData.user.id;
+            const { error: profileError } = await supabase
+                .from('profile')
+                .insert(profileInsert)
 
-        // 4. Create Profile
-        console.log('Creating profile for user:', userId)
-        const profileInsert: any = {
-            id: userId,
-            name,
-            username: username.trim(),
-            role
-        }
-        if (dept_id) profileInsert.dept_id = dept_id
-
-        const { error: profileError } = await supabase
-            .from('profile')
-            .insert(profileInsert)
-
-        if (profileError) {
-            console.error('Error creating profile:', profileError)
-            // Cleanup user if profile creation fails
-            await supabase.auth.admin.deleteUser(userId)
-            return new Response(JSON.stringify({ error: `Profile creation failed: ${profileError.message}` }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+            if (profileError) {
+                console.error('Error creating profile:', profileError)
+                // Cleanup user if profile creation fails
+                await supabase.auth.admin.deleteUser(userId)
+                return new Response(JSON.stringify({ error: `Profile creation failed: ${profileError.message}` }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                })
+            }
         }
 
         // 5. If role is member, create member record and initial credits
         if (role === 'member') {
-            console.log('Creating member record for user:', userId)
+            console.log('Creating member record for:', name)
 
             // Fetch supervisor's default credits
             const { data: setting } = await supabase
@@ -182,37 +197,44 @@ Deno.serve(async (req: Request) => {
 
             const initialCredits = setting?.wfh_credits ?? 0
 
-            const { error: memberError } = await supabase
+            const memberInsert: any = {
+                id_num,
+                name,
+                dept_id,
+                supervisor_id
+            }
+            if (userId) memberInsert.id = userId;
+
+            const { data: memberData, error: memberError } = await supabase
                 .from('members')
-                .insert({
-                    id: userId,
-                    id_num,
-                    name,
-                    dept_id,
-                    supervisor_id
-                })
+                .insert(memberInsert)
+                .select()
+                .single()
 
             if (memberError) {
                 console.error('Error creating member record:', memberError)
-                // Cleanup? For now just log. Ideally we should roll back.
+                // Note: If role was not member, we already created auth user/profile. 
+                // In current flow, if role is member, userId is null.
+                return new Response(JSON.stringify({ error: `Member creation failed: ${memberError.message}` }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                })
             } else {
                 // Initialize credits
                 await supabase
                     .from('credits')
                     .insert({
-                        member_id: userId,
+                        member_id: memberData.id,
                         wfh_credits: initialCredits
                     })
             }
         }
 
-        console.log('Registration successful for:', username)
+        console.log('Registration successful for:', role === 'member' ? name : username)
         return new Response(JSON.stringify({
             message: 'User registered successfully',
             user: {
-                id: userData.user.id,
-                email: userData.user.email,
-                username,
+                id: userId || 'member-only',
                 role
             }
         }), {

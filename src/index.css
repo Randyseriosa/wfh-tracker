@@ -1,33 +1,44 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@plugin "daisyui" {
-  themes: nord, dark, light;
-}
-
 @theme {
   --font-sans: "Outfit", system-ui, -apple-system, sans-serif;
   --font-display: "Outfit", system-ui, -apple-system, sans-serif;
 
-  --color-nord-0: #2e3440;
-  --color-nord-1: #3b4252;
-  --color-nord-2: #434c5e;
-  --color-nord-3: #4c566a;
-  --color-nord-4: #d8dee9;
-  --color-nord-5: #e5e9f0;
-  --color-nord-6: #eceff4;
-  --color-nord-7: #8fbcbb;
-  --color-nord-8: #88c0d0;
-  --color-nord-9: #81a1c1;
-  --color-nord-10: #5e81ac;
-  --color-nord-11: #bf616a;
-  --color-nord-12: #d08770;
-  --color-nord-13: #ebcb8b;
-  --color-nord-14: #a3be8c;
-  --color-nord-15: #b48ead;
+  --color-primary: #1A237E;
+  --color-secondary: #4FC3F7;
+  --color-accent: #FFB74D;
+  --color-success: #81C784;
+  --color-dark-navy: #1A237E;
+  --color-light-blue: #4FC3F7;
+  --color-orange: #FFB74D;
+  --color-green: #81C784;
 
   --radius-xl: 24px;
   --radius-2xl: 32px;
+}
+
+@plugin "daisyui" {
+  themes: wfh-theme, nord, dark, light;
+}
+
+[data-theme="wfh-theme"] {
+  --color-primary: #1A237E;
+  --color-primary-content: #ffffff;
+  --color-secondary: #4FC3F7;
+  --color-secondary-content: #000000;
+  --color-accent: #FFB74D;
+  --color-accent-content: #000000;
+  --color-neutral: #1A237E;
+  --color-neutral-content: #ffffff;
+  --color-base-100: #ffffff;
+  --color-base-200: #f8fafc;
+  --color-base-300: #f1f5f9;
+  --color-base-content: #1e293b;
+  --color-info: #4FC3F7;
+  --color-success: #81C784;
+  --color-warning: #FFB74D;
+  --color-error: #f87171;
 }
 
 :root {
@@ -115,6 +126,26 @@ body {
   animation: fadeInUp 0.5s ease-out forwards;
 }
 
-.animate-scale-in {
-  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+/* Action Loader */
+.loader {
+  width: 50px;
+  padding: 8px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #1A237E;
+  --_m: 
+    conic-gradient(#0000 10%,#000),
+    linear-gradient(#000 0 0) content-box;
+  -webkit-mask: var(--_m);
+          mask: var(--_m);
+  -webkit-mask-composite: source-out;
+          mask-composite: subtract;
+  animation: l3 1s infinite linear;
+}
+
+@keyframes l3 {to{transform: rotate(1turn)}}
+
+.loader-container {
+  @apply fixed inset-0 z-[9999] flex items-center justify-center bg-base-100/50 backdrop-blur-sm transition-all duration-300;
 }

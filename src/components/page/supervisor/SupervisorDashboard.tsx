@@ -6,9 +6,11 @@ import DashboardLayout from '../../layout/DashboardLayout';
 import { useTeamMembers, useTeamRequests, useDepartments, useSupervisorSettings } from '../../../hooks/useWFH';
 import { useAuth } from '../../../hooks/useAuth';
 import { wfhService } from '../../../supabaseService';
+import { useLoading } from '../../../context/LoadingContext';
+import { useModal } from '../../../context/ModalContext';
 
 const SupervisorDashboard = () => {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const [searchParams] = useSearchParams();
     const activeTab = searchParams.get('tab'); // Will be null, 'requests', 'members', or 'settings'
 
@@ -16,6 +18,8 @@ const SupervisorDashboard = () => {
     const { requests, loading: loadingRequests, refresh: refreshRequests } = useTeamRequests(user?.id);
     const { departments } = useDepartments();
     const { settings, defaultCredits, updateDefaultCredits, applyTeamCredits, loading: loadingSettings } = useSupervisorSettings(user?.id);
+    const { showLoading, hideLoading } = useLoading();
+    const { showAlert, showConfirm, showToast } = useModal();
 
     const [isAddMemberModalOpen, setAddMemberModalOpen] = useState(false);
     const [isUpdatingDefault, setIsUpdatingDefault] = useState(false);
@@ -39,52 +43,67 @@ const SupervisorDashboard = () => {
         const defaultSetting = settings.find(s => s.name === 'default-credits');
         const currentName = defaultSetting?.name || (settings.length > 0 ? settings[0].name : 'Default');
         setTempSettingName(currentName === 'default-credits' ? 'Default' : currentName);
-        setNewMember(prev => ({ ...prev, initial_credits: defaultCredits }));
-    }, [defaultCredits, settings]);
+        setNewMember(prev => ({
+            ...prev,
+            initial_credits: defaultCredits,
+            dept_id: profile?.dept_id || prev.dept_id
+        }));
+    }, [defaultCredits, settings, profile]);
 
     const handleApprove = async (id: string) => {
         try {
+            showLoading();
             await wfhService.approveRequest(id);
             refreshRequests();
             refreshMembers();
         } catch (err: any) {
-            alert(err.message);
+            showAlert(err.message, 'Error');
+        } finally {
+            hideLoading();
         }
     };
 
     const handleDeny = async (id: string) => {
         try {
+            showLoading();
             await wfhService.denyRequest(id);
             refreshRequests();
         } catch (err: any) {
-            alert(err.message);
+            showAlert(err.message, 'Error');
+        } finally {
+            hideLoading();
         }
     };
 
     const handleRevert = async (id: string) => {
         try {
+            showLoading();
             await wfhService.revertRequest(id);
             refreshRequests();
             refreshMembers();
         } catch (err: any) {
-            alert(err.message);
+            showAlert(err.message, 'Error');
+        } finally {
+            hideLoading();
         }
     };
 
     const handleUpdateDefaultCredits = async () => {
         try {
             setIsUpdatingDefault(true);
+            showLoading();
             await updateDefaultCredits(tempSettingName, tempDefaultCredits);
-            alert('Settings updated successfully');
+            showToast('Settings updated successfully', 'Success');
         } catch (err: any) {
-            alert(err.message);
+            showAlert(err.message, 'Error');
         } finally {
             setIsUpdatingDefault(false);
+            hideLoading();
         }
     };
 
     const handleApplyTeamCredits = async () => {
-        const confirmApply = window.confirm(
+        const confirmApply = await showConfirm(
             `Are you sure you want to set ALL current team members to ${tempDefaultCredits} credits? This will override their current balances.`
         );
 
@@ -92,13 +111,15 @@ const SupervisorDashboard = () => {
 
         try {
             setIsUpdatingDefault(true);
+            showLoading();
             await applyTeamCredits(tempDefaultCredits);
-            alert('Team credits updated successfully');
+            showToast('Team credits updated successfully', 'Success');
             refreshMembers(); // Refresh to see new balances
         } catch (err: any) {
-            alert(err.message);
+            showAlert(err.message, 'Error');
         } finally {
             setIsUpdatingDefault(false);
+            hideLoading();
         }
     };
 
@@ -108,20 +129,23 @@ const SupervisorDashboard = () => {
 
         // Validation
         if (!/^\d{4}-\d{4}$/.test(newMember.id_num)) {
-            alert('ID Number must be in XXXX-XXXX format');
+            showAlert('ID Number must be in XXXX-XXXX format', 'Invalid Input');
             return;
         }
 
         try {
+            showLoading();
             await wfhService.addMember({
                 ...newMember,
                 supervisor_id: user.id
             });
             setAddMemberModalOpen(false);
-            setNewMember({ name: '', id_num: '', dept_id: '', initial_credits: defaultCredits });
+            setNewMember({ name: '', id_num: '', dept_id: profile?.dept_id || '', initial_credits: defaultCredits });
             refreshMembers();
         } catch (err: any) {
-            alert(err.message);
+            showAlert(err.message, 'Error');
+        } finally {
+            hideLoading();
         }
     };
 
@@ -155,7 +179,7 @@ const SupervisorDashboard = () => {
                     <span className={`text-xs font-bold ${isToday ? 'text-primary' : 'text-secondary-content'}`}>{d}</span>
                     <div className="flex flex-wrap gap-1 mt-1 overflow-hidden">
                         {dayRequests.map((r) => (
-                            <div key={r.id} className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(34,211,238,0.5)]" title={r.member?.name}></div>
+                            <div key={r.id} className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(79,195,247,0.5)]" title={r.member?.name}></div>
                         ))}
                     </div>
                     {dayRequests.length > 0 && (
@@ -171,8 +195,8 @@ const SupervisorDashboard = () => {
                                 <div className="space-y-2.5 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                                     {dayRequests.map((r) => (
                                         <div key={r.id} className="flex items-center gap-3">
-                                            <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px] shrink-0 border border-primary/20">
-                                                {r.member?.name?.charAt(0)}
+                                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px] shrink-0 border border-primary/20">
+                                                {r.member?.name?.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-bold text-base-content truncate leading-none mb-0.5">{r.member?.name}</span>
@@ -236,7 +260,6 @@ const SupervisorDashboard = () => {
                             <div className="flex justify-between items-center mb-8">
                                 <div>
                                     <h3 className="text-2xl font-black tracking-tight">WFH Calendar</h3>
-                                    <p className="text-xs text-secondary-content mt-1">Track approved WFH schedules globally.</p>
                                 </div>
                                 <div className="flex items-center gap-4 bg-base-200 p-2 rounded-2xl border border-base-300">
                                     <button onClick={() => changeMonth(-1)} className="btn btn-ghost btn-sm btn-circle hover:bg-primary/20 hover:text-primary transition-colors">
@@ -324,8 +347,8 @@ const SupervisorDashboard = () => {
                                                 <tr key={req.id} className="hover:bg-primary/5 transition-all group">
                                                     <td className="py-6 px-8">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-                                                                {req.member?.name?.charAt(0)}
+                                                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                                                                {req.member?.name?.charAt(0).toUpperCase()}
                                                             </div>
                                                             <div>
                                                                 <div className="font-bold group-hover:text-primary transition-colors">{req.member?.name}</div>
@@ -428,8 +451,8 @@ const SupervisorDashboard = () => {
                                                     <tr key={m.id} className="hover:bg-primary/5 transition-all">
                                                         <td className="py-6 px-8">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-lg bg-secondary/20 flex items-center justify-center text-secondary font-bold text-xs">
-                                                                    {m.name.charAt(0)}
+                                                                <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold text-xs">
+                                                                    {m.name.charAt(0).toUpperCase()}
                                                                 </div>
                                                                 <div>
                                                                     <div className="font-bold">{m.name}</div>
@@ -453,7 +476,7 @@ const SupervisorDashboard = () => {
                                                             </span>
                                                         </td>
                                                         <td className="py-6 text-center">
-                                                            <span className="text-2xl font-black text-primary font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">
+                                                            <span className="text-2xl font-black text-primary font-mono drop-shadow-[0_0_8px_rgba(79,195,247,0.3)]">
                                                                 {leftThisMonth}
                                                             </span>
                                                         </td>
@@ -542,14 +565,14 @@ const SupervisorDashboard = () => {
                                             <div className="flex flex-col sm:flex-row gap-4 pt-4">
                                                 <button
                                                     onClick={handleUpdateDefaultCredits}
-                                                    className={`btn btn-primary flex-1 rounded-2xl h-14 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] ${isUpdatingDefault ? 'loading' : ''}`}
+                                                    className={`btn btn-primary flex-1 rounded-2xl h-14 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] ${isUpdatingDefault ? 'opacity-50' : ''}`}
                                                     disabled={isUpdatingDefault}
                                                 >
                                                     Update
                                                 </button>
                                                 <button
                                                     onClick={handleApplyTeamCredits}
-                                                    className={`btn btn-outline btn-secondary border-2 flex-1 rounded-2xl h-14 text-sm font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] ${isUpdatingDefault ? 'loading' : ''}`}
+                                                    className={`btn btn-outline btn-secondary border-2 flex-1 rounded-2xl h-14 text-sm font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] ${isUpdatingDefault ? 'opacity-50' : ''}`}
                                                     disabled={isUpdatingDefault}
                                                 >
                                                     Apply to Team
@@ -607,14 +630,11 @@ const SupervisorDashboard = () => {
                                 </div>
                                 <div className="form-control md:col-span-2">
                                     <label className="label"><span className="label-text text-secondary-content uppercase tracking-widest text-[10px] font-black">Department</span></label>
-                                    <select className="select select-bordered w-full bg-base-200 rounded-xl h-14 font-bold focus:border-primary transition-all text-base-content" value={newMember.dept_id} onChange={e => setNewMember({ ...newMember, dept_id: e.target.value })} required>
-                                        <option value="" disabled className="text-base-content/50">Select Department</option>
-                                        {departments.map(d => (
-                                            <option key={d.id} value={d.id} className="text-black bg-white">
-                                                {d.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="flex items-center w-full bg-base-200/50 rounded-xl h-14 px-5 border border-base-300/30">
+                                        <span className="font-bold text-primary italic">
+                                            {departments.find(d => d.id === (profile?.dept_id || newMember.dept_id))?.name || 'Loading department...'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-4 pt-6">
